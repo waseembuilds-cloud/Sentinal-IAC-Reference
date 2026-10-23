@@ -1,0 +1,53 @@
+aws_region          = "us-east-1"
+project_name        = "sentinel"
+environment         = "staging"
+evidence_bucket_name = "sentinel-staging-evidence-replace-with-unique-suffix"
+
+networking = {
+  vpc_cidr             = "10.20.0.0/16"
+  public_subnet_cidrs  = ["10.20.0.0/24", "10.20.1.0/24"]
+  private_subnet_cidrs = ["10.20.10.0/24", "10.20.11.0/24"]
+  nat_gateway_count    = 1
+}
+
+security = {
+  kms_deletion_window_days = 14
+  waf_rate_limit           = 2000
+}
+
+compute = {
+  alb_listener_port                = 80
+  alb_ingress_cidrs                = ["0.0.0.0/0"]
+  container_name                   = "sentinel-app"
+  container_image                  = "public.ecr.aws/docker/library/nginx:stable"
+  container_port                   = 80
+  health_check_path                = "/"
+  health_check_matcher             = "200-399"
+  health_check_interval            = 30
+  health_check_healthy_threshold   = 2
+  health_check_unhealthy_threshold = 3
+  health_check_timeout             = 5
+  database_identifier              = "sentinel-staging-db"
+  database_name                    = "sentinel"
+  database_username                = "sentinel_admin"
+  database_port                    = 5432
+  database_engine_version          = "16.3"
+  database_instance_class          = "db.t4g.micro"
+  database_allocated_storage       = 20
+  database_max_allocated_storage   = 100
+  database_multi_az                = false
+  database_backup_retention_days   = 7
+  database_deletion_protection     = false
+  database_skip_final_snapshot     = true
+  database_apply_immediately       = true
+  database_password_length         = 32
+  database_password_special_chars  = "!#$%&*()-_=+[]{}<>:?"
+  database_secret_name             = "sentinel/staging/database"
+  database_secret_recovery_days    = 7
+  task_cpu                         = 256
+  task_memory                      = 512
+  desired_count                    = 1
+  application_environment          = { APP_ENV = "staging" }
+  log_retention_days               = 14
+  force_destroy_evidence_bucket    = false
+}

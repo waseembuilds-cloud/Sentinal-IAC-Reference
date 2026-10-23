@@ -1,0 +1,53 @@
+aws_region           = "us-east-1"
+project_name         = "sentinel"
+environment          = "production"
+evidence_bucket_name = "sentinel-production-evidence-replace-with-unique-suffix"
+
+networking = {
+  vpc_cidr             = "10.30.0.0/16"
+  public_subnet_cidrs  = ["10.30.0.0/24", "10.30.1.0/24"]
+  private_subnet_cidrs = ["10.30.10.0/24", "10.30.11.0/24"]
+  nat_gateway_count    = 2
+}
+
+security = {
+  kms_deletion_window_days = 30
+  waf_rate_limit           = 5000
+}
+
+compute = {
+  alb_listener_port                = 80
+  alb_ingress_cidrs                = ["0.0.0.0/0"]
+  container_name                   = "sentinel-app"
+  container_image                  = "public.ecr.aws/docker/library/nginx:stable"
+  container_port                   = 80
+  health_check_path                = "/"
+  health_check_matcher             = "200-399"
+  health_check_interval            = 30
+  health_check_healthy_threshold   = 3
+  health_check_unhealthy_threshold = 3
+  health_check_timeout             = 5
+  database_identifier              = "sentinel-production-db"
+  database_name                    = "sentinel"
+  database_username                = "sentinel_admin"
+  database_port                    = 5432
+  database_engine_version          = "16.3"
+  database_instance_class          = "db.r6g.large"
+  database_allocated_storage       = 100
+  database_max_allocated_storage   = 1000
+  database_multi_az                = true
+  database_backup_retention_days   = 35
+  database_deletion_protection     = true
+  database_skip_final_snapshot     = false
+  database_apply_immediately       = false
+  database_password_length         = 40
+  database_password_special_chars  = "!#$%&*()-_=+[]{}<>:?"
+  database_secret_name             = "sentinel/production/database"
+  database_secret_recovery_days    = 30
+  task_cpu                         = 1024
+  task_memory                      = 2048
+  desired_count                    = 2
+  application_environment          = { APP_ENV = "production" }
+  log_retention_days               = 90
+  force_destroy_evidence_bucket    = false
+}

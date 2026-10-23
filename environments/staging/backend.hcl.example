@@ -1,0 +1,6 @@
+bucket       = "REPLACE_WITH_SECURE_TERRAFORM_STATE_BUCKET"
+key          = "sentinel/staging/terraform.tfstate"
+region       = "REPLACE_WITH_STATE_BUCKET_REGION"
+encrypt      = true
+kms_key_id   = "REPLACE_WITH_STATE_KMS_KEY_ARN"
+use_lockfile = true

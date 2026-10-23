@@ -1,0 +1,14 @@
+# Terraform working directories and local state
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+
+# Environment-specific values and backend configuration
+*.tfvars
+*.tfvars.json
+backend.hcl
+
+# Keep .terraform.lock.hcl tracked for reproducible provider selections.
