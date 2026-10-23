@@ -13,10 +13,25 @@ networking = {
 security = {
   kms_deletion_window_days = 30
   waf_rate_limit           = 5000
+  waf_log_retention_days   = 90
+}
+
+identity = {
+  deletion_protection              = true
+  mfa_configuration                = "ON"
+  password_minimum_length          = 14
+  temporary_password_validity_days = 3
+  access_token_validity_minutes    = 30
+  id_token_validity_minutes        = 30
+  refresh_token_validity_days      = 7
 }
 
 compute = {
   alb_listener_port                = 80
+  alb_https_port                   = 443
+  acm_certificate_arn              = "arn:aws:acm:us-east-1:000000000000:certificate/00000000-0000-0000-0000-000000000000"
+  application_domain_name          = "app.example.com"
+  alb_ssl_policy                   = "ELBSecurityPolicy-TLS13-1-2-2021-06"
   alb_ingress_cidrs                = ["0.0.0.0/0"]
   container_name                   = "sentinel-app"
   container_image                  = "public.ecr.aws/docker/library/nginx:stable"
@@ -27,6 +42,7 @@ compute = {
   health_check_healthy_threshold   = 3
   health_check_unhealthy_threshold = 3
   health_check_timeout             = 5
+  health_check_grace_period_seconds = 90
   database_identifier              = "sentinel-production-db"
   database_name                    = "sentinel"
   database_username                = "sentinel_admin"
@@ -40,13 +56,19 @@ compute = {
   database_deletion_protection     = true
   database_skip_final_snapshot     = false
   database_apply_immediately       = false
-  database_password_length         = 40
-  database_password_special_chars  = "!#$%&*()-_=+[]{}<>:?"
-  database_secret_name             = "sentinel/production/database"
-  database_secret_recovery_days    = 30
   task_cpu                         = 1024
   task_memory                      = 2048
   desired_count                    = 2
+  minimum_task_count               = 2
+  maximum_task_count               = 8
+  target_cpu_utilization           = 60
+  target_memory_utilization        = 70
+  scale_in_cooldown_seconds        = 300
+  scale_out_cooldown_seconds       = 60
+  alarm_sns_topic_arn              = ""
+  alb_5xx_alarm_threshold          = 25
+  database_cpu_alarm_threshold     = 80
+  database_free_storage_alarm_threshold_bytes = 10737418240
   application_environment          = { APP_ENV = "production" }
   log_retention_days               = 90
   force_destroy_evidence_bucket    = false

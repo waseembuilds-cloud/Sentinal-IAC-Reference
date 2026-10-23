@@ -27,6 +27,22 @@ data "aws_iam_policy_document" "kms_key" {
       identifiers = ["arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:root"]
     }
   }
+
+  statement {
+    sid       = "AllowCloudWatchLogsUseForEncryptedLogGroups"
+    effect    = "Allow"
+    actions   = ["kms:Decrypt", "kms:Encrypt", "kms:GenerateDataKey", "kms:DescribeKey"]
+    resources = ["*"]
+    principals {
+      type        = "Service"
+      identifiers = ["logs.${data.aws_region.current.name}.${data.aws_partition.current.dns_suffix}"]
+    }
+    condition {
+      test     = "ArnLike"
+      variable = "kms:EncryptionContext:aws:logs:arn"
+      values   = ["arn:${data.aws_partition.current.partition}:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:*"]
+    }
+  }
 }
 
 resource "aws_wafv2_web_acl" "this" {
@@ -104,6 +120,30 @@ resource "aws_wafv2_web_acl" "this" {
   tags = var.tags
 }
 
+resource "aws_cloudwatch_log_group" "waf" {
+  name              = "aws-waf-logs-${var.name}"
+  retention_in_days = var.waf_log_retention_days
+  kms_key_id        = aws_kms_key.this.arn
+  tags              = var.tags
+}
+
+resource "aws_wafv2_web_acl_logging_configuration" "this" {
+  resource_arn            = aws_wafv2_web_acl.this.arn
+  log_destination_configs = [aws_cloudwatch_log_group.waf.arn]
+
+  redacted_fields {
+    single_header {
+      name = "authorization"
+    }
+  }
+
+  redacted_fields {
+    single_header {
+      name = "cookie"
+    }
+  }
+}
+
 data "aws_iam_policy_document" "ecs_tasks_assume_role" {
   statement {
     actions = ["sts:AssumeRole"]
@@ -151,7 +191,7 @@ data "aws_iam_policy_document" "task" {
 
   statement {
     sid       = "UseEvidenceKmsKey"
-    actions   = ["kms:Decrypt", "kms:Encrypt", "kms:GenerateDataKey", "kms:DescribeKey"]
+    actions   = ["kms:Decrypt", "kms:Encrypt", "kms:GenerateDataKey"]
     resources = [aws_kms_key.this.arn]
     condition {
       test     = "StringEquals"
@@ -175,29 +215,4 @@ resource "aws_iam_role_policy" "task" {
 resource "aws_iam_role_policy_attachment" "execution" {
   role       = aws_iam_role.execution.name
   policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-}
-
-data "aws_iam_policy_document" "execution_secrets" {
-  statement {
-    sid       = "ReadDatabaseSecret"
-    actions   = ["secretsmanager:GetSecretValue"]
-    resources = ["arn:${data.aws_partition.current.partition}:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:${var.database_secret_name}*"]
-  }
-
-  statement {
-    sid       = "DecryptDatabaseSecret"
-    actions   = ["kms:Decrypt", "kms:DescribeKey"]
-    resources = [aws_kms_key.this.arn]
-    condition {
-      test     = "StringEquals"
-      variable = "kms:ViaService"
-      values   = ["secretsmanager.${data.aws_region.current.name}.${data.aws_partition.current.dns_suffix}"]
-    }
-  }
-}
-
-resource "aws_iam_role_policy" "execution_secrets" {
-  name   = "${var.name}-database-secret"
-  role   = aws_iam_role.execution.id
-  policy = data.aws_iam_policy_document.execution_secrets.json
 }

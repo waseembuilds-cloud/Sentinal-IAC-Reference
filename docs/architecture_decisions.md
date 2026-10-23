@@ -8,19 +8,19 @@ Each environment is a separate Terraform root and therefore has independent stat
 
 ## Identity: Amazon Cognito
 
-Cognito is the intended user identity provider rather than a bespoke credential store. A managed provider reduces the amount of authentication code the platform must secure and maintain, offers built-in MFA and federation capabilities, and provides service-level security and compliance documentation. Authentication remains outside the assessment and evidence data boundaries. Cognito integration is represented in the architecture but is not provisioned by these Terraform modules.
+Cognito provides email-based sign-in, MFA, a public application client, and the OIDC issuer used by the application. This avoids a bespoke credential store and delegates identity lifecycle and MFA capabilities to a managed provider. The application must still validate JWT signatures, issuer, client audience, token type, expiry, and scopes; the infrastructure does not enforce application authorization.
 
 ## Secrets: AWS Secrets Manager
 
-Database credentials should not be placed in source control, Terraform variable files, or plain-text container environment variables. Secrets Manager provides encrypted storage, access auditing through AWS service events, and a supported path to rotation. The database password is generated during provisioning and stored as a Secrets Manager secret; ECS receives the secret through its task definition. Production deployments should add and test a rotation strategy compatible with the application's connection lifecycle.
+Database credentials should not be placed in source control, Terraform variable files, or plaintext Terraform state. RDS manages the master password in Secrets Manager, encrypts the secret with KMS, and provides managed rotation; Terraform passes the secret ARN reference into the ECS task definition rather than storing the password. The application still receives the password in its runtime environment, so access to tasks and process environments remains sensitive. Before production, create a dedicated least-privilege database principal for the application and test its reconnection behavior during rotation.
 
 ## WAF in front of the ALB
 
-WAFv2 is associated with the internet-facing ALB, so requests are inspected before reaching application tasks. The managed common and known-bad-input rule groups provide baseline filtering for common exploit patterns such as SQL injection and cross-site scripting, while the rate-based rule limits abusive request bursts. WAF is a defense-in-depth layer, not a replacement for application input validation or upstream DDoS planning.
+WAFv2 is associated with the internet-facing ALB, so requests are inspected before reaching application tasks. The managed common and known-bad-input rule groups provide baseline filtering for common exploit patterns such as SQL injection and cross-site scripting, while the rate-based rule limits abusive request bursts. WAF request logs are encrypted and retained with authorization and cookie headers redacted. WAF is a defense-in-depth layer, not a replacement for application input validation or upstream DDoS planning.
 
 ## Private networking and storage
 
-Only the ALB is placed in public subnets. Fargate tasks and RDS are placed in private subnets and accept traffic only from their immediate upstream security group. Evidence objects use a private, versioned S3 bucket with KMS encryption and TLS-only access. A shared, rotated customer-managed KMS key provides the database and bucket encryption key in this reference; key policy, separation, and recovery controls should be reviewed against the client's data classification and retention requirements.
+Only the ALB and NAT gateways are placed in public subnets. Fargate tasks and RDS are placed in private subnets and accept traffic only from their immediate upstream security group. Evidence objects use a private, versioned S3 bucket with KMS encryption and TLS-only access. A shared, rotated customer-managed KMS key provides database, bucket, and log encryption in this reference; key policy, separation, and recovery controls should be reviewed against the client's data classification and retention requirements.
 
 ## Workload identity
 

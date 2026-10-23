@@ -38,9 +38,33 @@ variable "ecs_execution_role_arn" {
   type        = string
 }
 
+variable "ecs_execution_role_name" {
+  description = "Task execution role name for attaching the database-secret permission."
+  type        = string
+}
+
 variable "alb_listener_port" {
-  description = "HTTP listener port on the ALB."
+  description = "HTTP listener port that redirects to HTTPS."
   type        = number
+}
+
+variable "alb_https_port" {
+  description = "HTTPS listener port on the ALB."
+  type        = number
+}
+
+variable "acm_certificate_arn" {
+  description = "ACM certificate ARN in the same region as the ALB."
+  type        = string
+  validation {
+    condition     = can(regex("^arn:[^:]+:acm:[^:]+:[0-9]{12}:certificate/[0-9a-fA-F-]+$", var.acm_certificate_arn))
+    error_message = "acm_certificate_arn must be an ACM certificate ARN in the ALB region."
+  }
+}
+
+variable "alb_ssl_policy" {
+  description = "TLS security policy used by the HTTPS listener."
+  type        = string
 }
 
 variable "alb_ingress_cidrs" {
@@ -93,6 +117,11 @@ variable "health_check_timeout" {
   type        = number
 }
 
+variable "health_check_grace_period_seconds" {
+  description = "Seconds ECS waits before evaluating failed health checks on a new task."
+  type        = number
+}
+
 variable "database_identifier" {
   description = "Unique RDS DB instance identifier."
   type        = string
@@ -126,11 +155,19 @@ variable "database_instance_class" {
 variable "database_allocated_storage" {
   description = "Initial database storage in GiB."
   type        = number
+  validation {
+    condition     = var.database_allocated_storage >= 20
+    error_message = "PostgreSQL allocated storage must be at least 20 GiB."
+  }
 }
 
 variable "database_max_allocated_storage" {
   description = "Maximum autoscaled database storage in GiB."
   type        = number
+  validation {
+    condition     = var.database_max_allocated_storage >= var.database_allocated_storage
+    error_message = "Maximum allocated storage must be greater than or equal to initial storage."
+  }
 }
 
 variable "database_multi_az" {
@@ -158,34 +195,9 @@ variable "database_apply_immediately" {
   type        = bool
 }
 
-variable "database_password_length" {
-  description = "Length of the generated database password."
-  type        = number
-}
-
-variable "database_password_special_characters" {
-  description = "Special characters allowed in the generated database password."
-  type        = string
-}
-
-variable "database_secret_name" {
-  description = "Secrets Manager name for the database credentials."
-  type        = string
-}
-
-variable "database_secret_description" {
-  description = "Description for the database credentials secret."
-  type        = string
-}
-
 variable "database_secret_environment_name" {
-  description = "Container environment variable name receiving the secret JSON."
+  description = "Container environment variable name receiving the RDS-managed password."
   type        = string
-}
-
-variable "secret_recovery_window_days" {
-  description = "Secrets Manager recovery window in days."
-  type        = number
 }
 
 variable "task_cpu" {
@@ -200,6 +212,64 @@ variable "task_memory" {
 
 variable "desired_count" {
   description = "Desired number of running ECS tasks."
+  type        = number
+}
+
+variable "minimum_task_count" {
+  description = "Minimum ECS service task count for autoscaling."
+  type        = number
+}
+
+variable "maximum_task_count" {
+  description = "Maximum ECS service task count for autoscaling."
+  type        = number
+}
+
+variable "target_cpu_utilization" {
+  description = "Target average ECS service CPU utilization percentage."
+  type        = number
+  validation {
+    condition     = var.target_cpu_utilization > 0 && var.target_cpu_utilization <= 100
+    error_message = "target_cpu_utilization must be greater than 0 and at most 100."
+  }
+}
+
+variable "target_memory_utilization" {
+  description = "Target average ECS service memory utilization percentage."
+  type        = number
+  validation {
+    condition     = var.target_memory_utilization > 0 && var.target_memory_utilization <= 100
+    error_message = "target_memory_utilization must be greater than 0 and at most 100."
+  }
+}
+
+variable "scale_in_cooldown_seconds" {
+  description = "Scale-in cooldown for ECS target tracking."
+  type        = number
+}
+
+variable "scale_out_cooldown_seconds" {
+  description = "Scale-out cooldown for ECS target tracking."
+  type        = number
+}
+
+variable "alarm_sns_topic_arn" {
+  description = "Optional pre-created SNS topic ARN for alarm notifications."
+  type        = string
+}
+
+variable "alb_5xx_alarm_threshold" {
+  description = "ALB target 5xx count threshold per evaluation period."
+  type        = number
+}
+
+variable "database_cpu_alarm_threshold" {
+  description = "RDS CPU utilization alarm threshold percentage."
+  type        = number
+}
+
+variable "database_free_storage_alarm_threshold_bytes" {
+  description = "RDS free storage alarm threshold in bytes."
   type        = number
 }
 

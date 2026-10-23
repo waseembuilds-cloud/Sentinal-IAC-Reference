@@ -11,6 +11,13 @@ resource "aws_vpc" "this" {
   enable_dns_support   = true
   enable_dns_hostnames = true
 
+  lifecycle {
+    precondition {
+      condition     = length(data.aws_availability_zones.available.names) >= 2
+      error_message = "The selected region must provide at least two available Availability Zones."
+    }
+  }
+
   tags = merge(var.tags, { Name = "${var.name}-vpc" })
 }
 

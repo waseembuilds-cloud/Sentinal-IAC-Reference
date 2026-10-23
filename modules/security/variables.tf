@@ -23,13 +23,13 @@ variable "waf_rate_limit" {
   type        = number
 }
 
-variable "evidence_bucket_name" {
-  description = "Name of the evidence bucket granted to the application task role."
-  type        = string
+variable "waf_log_retention_days" {
+  description = "CloudWatch retention period for WAF request logs."
+  type        = number
 }
 
-variable "database_secret_name" {
-  description = "Name prefix of the Secrets Manager database secret."
+variable "evidence_bucket_name" {
+  description = "Name of the evidence bucket granted to the application task role."
   type        = string
 }
 
